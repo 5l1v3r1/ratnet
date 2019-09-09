@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/gob"
 	"errors"
+	"time"
 
 	"github.com/awgh/bencrypt/bc"
 	"github.com/awgh/ratnet/api"
@@ -57,6 +58,12 @@ func (node *Node) Pickup(rpub bc.PubKey, lastTime int64, maxBytes int64, channel
 	events.Debug(node, "Pickup called")
 	var retval api.Bundle
 	var msgs [][]byte
+
+	if lastTime < 0 {
+		retval.Time = time.Now().UnixNano()
+		events.Debug(node, "Pickup(-) returned just the time")
+		return retval, nil
+	}
 
 	msgs, rvts := node.outbox.MsgsSince(lastTime, maxBytes, channelNames...)
 	retval.Time = rvts

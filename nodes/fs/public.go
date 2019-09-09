@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/awgh/bencrypt/bc"
 	"github.com/awgh/ratnet/api"
@@ -63,6 +64,12 @@ func (node *Node) Pickup(rpub bc.PubKey, lastTime int64, maxBytes int64, channel
 	var msgs [][]byte
 	retval.Time = lastTime
 	var bytesRead int64
+
+	if lastTime < 0 {
+		retval.Time = time.Now().UnixNano()
+		events.Debug(node, "Pickup(-) returned just the time")
+		return retval, nil
+	}
 
 	err := filepath.Walk(node.basePath, func(path string, info os.FileInfo, err error) error {
 		if err != nil {

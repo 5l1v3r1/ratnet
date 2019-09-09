@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/gob"
 	"errors"
+	"time"
 
 	"github.com/awgh/bencrypt/bc"
 	"github.com/awgh/ratnet/api"
@@ -54,6 +55,12 @@ func (node *Node) Dropoff(bundle api.Bundle) error {
 func (node *Node) Pickup(rpub bc.PubKey, lastTime int64, maxBytes int64, channelNames ...string) (api.Bundle, error) {
 	events.Debug(node, "Pickup called")
 	var retval api.Bundle
+
+	if lastTime < 0 {
+		retval.Time = time.Now().UnixNano()
+		events.Debug(node, "Pickup(-) returned just the time")
+		return retval, nil
+	}
 
 	msgs, lastTimeReturned, err := node.qlGetMessages(lastTime, maxBytes, channelNames...)
 	if err != nil {
