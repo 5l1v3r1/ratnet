@@ -17,15 +17,15 @@ type Poll struct {
 	wg        sync.WaitGroup
 	isRunning bool
 
-	// last poll times
+	// last poll times, 0 as initial value will sync older messages than first connect, any negative value will not
 	lastPollLocal, lastPollRemote int64
 
 	Transport api.Transport
 	node      api.Node
 
-	Interval int
-
-	Group string
+	Interval    int
+	SyncBacklog bool
+	Group       string
 }
 
 func init() {
@@ -36,12 +36,13 @@ func init() {
 func NewPollFromMap(transport api.Transport, node api.Node,
 	t map[string]interface{}) api.Policy {
 	interval := int(t["Interval"].(float64))
+	syncBacklog := bool(t["SyncBacklog"].(bool))
 	group := string(t["Group"].(string))
-	return NewPoll(transport, node, interval, group)
+	return NewPoll(transport, node, interval, syncBacklog, group)
 }
 
 // NewPoll : Returns a new instance of a Poll Connection Policy
-func NewPoll(transport api.Transport, node api.Node, interval int, group ...string) *Poll {
+func NewPoll(transport api.Transport, node api.Node, interval int, syncBacklog bool, group ...string) *Poll {
 	p := new(Poll)
 	// if we don't have a specified group, it's ""
 	p.Group = ""
@@ -51,6 +52,7 @@ func NewPoll(transport api.Transport, node api.Node, interval int, group ...stri
 	p.Transport = transport
 	p.node = node
 	p.Interval = interval
+	p.SyncBacklog = syncBacklog
 
 	return p
 }
@@ -58,10 +60,11 @@ func NewPoll(transport api.Transport, node api.Node, interval int, group ...stri
 // MarshalJSON : Create a serialied representation of the config of this policy
 func (p *Poll) MarshalJSON() (b []byte, e error) {
 	return json.Marshal(map[string]interface{}{
-		"Policy":    "poll",
-		"Transport": p.Transport,
-		"Interval":  p.Interval,
-		"Group":     p.Group})
+		"Policy":      "poll",
+		"Transport":   p.Transport,
+		"Interval":    p.Interval,
+		"SyncBacklog": p.SyncBacklog,
+		"Group":       p.Group})
 }
 
 // RunPolicy : Poll
@@ -70,9 +73,13 @@ func (p *Poll) RunPolicy() error {
 		return errors.New("Policy is already running")
 	}
 
-	p.lastPollLocal = 0
-	p.lastPollRemote = 0
-
+	if p.SyncBacklog {
+		p.lastPollLocal = -1
+		p.lastPollRemote = -1
+	} else {
+		p.lastPollLocal = 0
+		p.lastPollRemote = 0
+	}
 	p.wg.Add(1)
 	go func() {
 		defer p.wg.Done()
