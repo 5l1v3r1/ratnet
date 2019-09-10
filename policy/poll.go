@@ -74,11 +74,11 @@ func (p *Poll) RunPolicy() error {
 	}
 
 	if p.SyncBacklog {
-		p.lastPollLocal = -1
-		p.lastPollRemote = -1
-	} else {
 		p.lastPollLocal = 0
 		p.lastPollRemote = 0
+	} else {
+		p.lastPollLocal = -1
+		p.lastPollRemote = -1
 	}
 	p.wg.Add(1)
 	go func() {
